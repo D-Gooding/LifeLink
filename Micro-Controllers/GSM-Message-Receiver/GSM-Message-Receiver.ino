@@ -1,8 +1,6 @@
 #include <string.h>
 
-//----------------------------------------------------------------------------------------
-
-//-------------------
+//
 
 #include <SoftwareSerial.h> //allows connection between the two boards
 
@@ -12,60 +10,75 @@ char buffer[256]; //stops overflow of arduino
 
 SoftwareSerial GSM(7, 8); //RX and TX 
 
+bool USB_DEBUG_MODE = false;
+
+
+//Added debugging options on the serial outputs 
+void serialPrintString(const __FlashStringHelper c[], bool NewLine = true)
+{
+  USB_DEBUG_MODE ? true : Serial.print(c);
+  NewLine ? true : Serial.println("");
+}
+
+void serialPrintString(const char c[], bool NewLine = true)
+{
+  USB_DEBUG_MODE ? true : Serial.print(c);
+  NewLine ? true : Serial.println("");
+}
 
 
 void setup() {
   
   Serial.begin(9600);
-  Serial.println("--------------------------------------------------------");
-  Serial.println("--  Sony GSM IR Remote v1.00 20/06/2020-----------------");
-  Serial.println("--  Created By Dean Gooding  --");
-  Serial.println("--------------------------------------------------------");
-
-  //--------------------------------------------------------------
   GSM.begin(9600); //software interface
   SIM900power();
   Serial.print(F("waiting for device connection"));
   for(int i = 0; i<10; i++){
-    Serial.print(F("."));
+    serialPrintString(F("."),false);
     delay(1000);
   }
-  Serial.println("");
+  serialPrintString(F(""));
 
   //send Config commands to set the board up
 
-  //query NET Provider (VODA)
-  Serial.println(F("Connecting To NET"));
+  //query NET Provider
+  serialPrintString(F("Connecting To NET"));
   GSM.print("AT+COPS?\r");
   readGSMBuffer();
-  Serial.println(buffer);
+  serialPrintString(buffer);
   
   //SET SMS mode to text
-  Serial.println(F("Setting SMS message to text"));
+  serialPrintString(F("Setting SMS message to text"));
   GSM.print("AT+CMGF=1\r");
   readGSMBuffer();
-  Serial.println(buffer);
+  serialPrintString(buffer);
 
   //Send SMS message to Arduino via serial
-  Serial.println(F("Forwarding SMS commands to serial"));
+  serialPrintString(F("Forwarding SMS commands to serial"));
   GSM.print("AT+CNMI=2,2,0,0,0\r");
   readGSMBuffer();
-  Serial.println(buffer);
+  serialPrintString(buffer);
 
   //get Number
-  Serial.println(F("Attempt to get number"));
+  serialPrintString(F("Get Signal Strength"));
+  GSM.print("AT+CSQ\r");
+  readGSMBuffer();
+  //EDIT this later to pass a connected check
+  serialPrintString(buffer);
+
+  serialPrintString(F("Attempt to get number"));
   GSM.print("AT+CNUM\r");
   readGSMBuffer();
-  Serial.println(buffer);
+  serialPrintString(buffer);
 
   // Caller ID setup
-  Serial.println(F("Enabling Caller ID on incoming calls"));
+  serialPrintString(F("Enabling Caller ID on incoming calls"));
   GSM.print("AT+CLIP=1\r");
   readGSMBuffer();
-  Serial.println(buffer);
+  serialPrintString(buffer);
 
   //done
-  Serial.print("Done");
+  serialPrintString("Done");
   sendSMS();
   
 }
@@ -233,7 +246,7 @@ void loop() {
   //if buffer not empty
   uint32_t keyCode = 0;
   if(buffer[0] != '\0'){
-    Serial.println(buffer);
+    serialPrintString(buffer);
     //these variables will be populated by the data given
 
     char phone[16];
@@ -241,15 +254,10 @@ void loop() {
     char message [160];
 
     //string commands get turned into actions
-    if(receiveSMS(message, phone, datetime) && strcmp(phone, "+********") == 0){
-      Serial.print("Incoming SMS from number: ");
-      Serial.println(phone);
-      Serial.print("Datetime: ");
-      Serial.println(datetime);
-      Serial.print("Received Message: ");
-      Serial.println(message);
-      //===== Pass Via Serial the Message =====================
-      
+    if(receiveSMS(message, phone, datetime)){
+      serialPrintString(F("Incoming SMS from number: "));
+      char* ESP32Message = strcat(strcat(strcat(phone,"|"),strcat(message,"|")),datetime); 
+      Serial.println(ESP32Message);       
     }
     
   }
