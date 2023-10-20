@@ -1,29 +1,45 @@
 #include <string.h>
-
-//
-
 #include <SoftwareSerial.h> //allows connection between the two boards
-
-//sms is 160 max
+#include <ArduinoJson.h>
 
 char buffer[256]; //stops overflow of arduino
 
-SoftwareSerial GSM(7, 8); //RX and TX 
+SoftwareSerial GSM(7, 8); //RX and TX
 
 bool USB_DEBUG_MODE = false;
 
 
 //Added debugging options on the serial outputs 
-void serialPrintString(const __FlashStringHelper c[], bool NewLine = true)
+void serialPrintString(const __FlashStringHelper c[])
 {
-  USB_DEBUG_MODE ? true : Serial.print(c);
-  NewLine ? true : Serial.println("");
+  if (USB_DEBUG_MODE)
+  {
+    Serial.println(c);
+  }
 }
 
-void serialPrintString(const char c[], bool NewLine = true)
+void serialPrintString(const char c[])
 {
-  USB_DEBUG_MODE ? true : Serial.print(c);
-  NewLine ? true : Serial.println("");
+  if(USB_DEBUG_MODE)
+  {
+    Serial.println(c);
+  }
+}
+
+void checkCSQAtCodeForStrength(const char str[]) {
+    char *csqPtr = strstr(str, "+CSQ:");
+    if (csqPtr == NULL) {
+      return;
+      }
+
+    csqPtr += 6; // Move the pointer to the character after '+CSQ:'
+    for (; *csqPtr != '\0'; csqPtr++) {
+        if (*csqPtr != '0' && *csqPtr != ',' && *csqPtr != ' ') {
+          return;
+        }
+    }
+
+    Serial.println("GSM-CONNECTED");
 }
 
 
@@ -31,10 +47,13 @@ void setup() {
   
   Serial.begin(9600);
   GSM.begin(9600); //software interface
+  //ESPSerial.begin(19200);
   SIM900power();
-  Serial.print(F("waiting for device connection"));
+
+  //ESPSerial.print("HEEYY");
+  serialPrintString(F("waiting for device connection"));
   for(int i = 0; i<10; i++){
-    serialPrintString(F("."),false);
+    serialPrintString(F("."));
     delay(1000);
   }
   serialPrintString(F(""));
@@ -63,8 +82,7 @@ void setup() {
   serialPrintString(F("Get Signal Strength"));
   GSM.print("AT+CSQ\r");
   readGSMBuffer();
-  //EDIT this later to pass a connected check
-  serialPrintString(buffer);
+  checkCSQAtCodeForStrength(buffer);
 
   serialPrintString(F("Attempt to get number"));
   GSM.print("AT+CNUM\r");
@@ -255,9 +273,14 @@ void loop() {
 
     //string commands get turned into actions
     if(receiveSMS(message, phone, datetime)){
-      serialPrintString(F("Incoming SMS from number: "));
-      char* ESP32Message = strcat(strcat(strcat(phone,"|"),strcat(message,"|")),datetime); 
-      Serial.println(ESP32Message);       
+      
+      StaticJsonDocument<200> jsonSerialMessage;
+      jsonSerialMessage["phoneNumber"] = phone;
+      jsonSerialMessage["dateTime"] = datetime;
+      jsonSerialMessage["message"] = message;
+
+      serializeJson(jsonSerialMessage, Serial);
+      Serial.println();
     }
     
   }
