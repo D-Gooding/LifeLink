@@ -1,31 +1,98 @@
 #include <ArduinoJson.h>
+#include <WiFiManager.h>
+#include <EEPROM.h>
+#include "Webserver_Utils.h"
+#include "General_Utils.h"
+
 
 #define RXp2 16
 #define TXp2 17
+
+// defining the bytes were gonna need
+#define GSM_TOGGLE_SIZE 1
+
+bool wm_nonblocking = true; // change to true to use non blocking
+
+
+bool GSMMode = true;
+char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUMBER_LENGTH];
+int GSMToggleEPROM = 0;
+
+
+WiFiManager wm;
+WiFiManagerParameter GSMToggleParam; // global param ( for non blocking w params )
+WiFiManagerParameter AllowListNumbers;
+
+
 
 void setup() {
   Serial.begin(115200);
   Serial2.begin(9600, SERIAL_8N1, RXp2, TXp2);
   pinMode(LED_BUILTIN, OUTPUT);
+
+  // initialize EEPROM with predefined size
+  EEPROM.begin(20 + (MAX_MOBILE_NUMBERS * MOBILE_NUMBER_LENGTH ));
+  GSMToggleEPROM = 2 + (MAX_MOBILE_NUMBERS * MOBILE_NUMBER_LENGTH );
+
+
+  bool res;
+
+  if(wm_nonblocking) wm.setConfigPortalBlocking(false);
+
+  GSMMode = (EEPROM.read(GSMToggleEPROM) == 1);
+
+  readMobileNumbersFromEEPROM();
+
+  Serial.println(EEPROM.read(GSMToggleEPROM));
+  Serial.println(ReconstructNumbers(mobileNumbers));
+  int customFieldLength = 40;
+
+
+  // ============================== GSM Radio Button select ==============================
+
+  // THIS IS SHIT...... YES I've tried the way you are thinking of..... but memory problem :(
+
+  if(GSMMode)
+  {
+    new (&GSMToggleParam) WiFiManagerParameter("<br/><label for='GSMToggleId'>Toggle GSM Mode</label><br></br>\
+    <input type='radio' name='GSMToggleId' value='true' checked> On <br></br>\
+    <input type='radio' name='GSMToggleId' value='false'> Off <br>");
+  }
+  else{
+    new (&GSMToggleParam) WiFiManagerParameter("<br/><label for='GSMToggleId'>Toggle GSM Mode</label><br></br>\
+    <input type='radio' name='GSMToggleId' value='true'> On <br></br>\
+    <input type='radio' name='GSMToggleId' value='false' checked> Off <br>");
+  }
+
+  wm.addParameter(&GSMToggleParam);
+
+  // ============================== GSM valid Number ==============================
+  new (&AllowListNumbers) WiFiManagerParameter("MobileNumberAllowListId", "Enter allowed number below", ReconstructNumbers(mobileNumbers), customFieldLength,"placeholder=\"+44********** \"");
+  wm.addParameter(&AllowListNumbers);
+
+
+  wm.setSaveParamsCallback(saveParamCallback);
+
+  std::vector<const char *> menu = {"wifi","info","param","sep","restart","exit"};
+  wm.setMenu(menu);
+
+  // set dark theme
+  wm.setClass("invert");
+
+  res = wm.autoConnect("LifeLinkAP","password"); // password protected ap
+
+
+  if(!res) {
+      Serial.println("Failed to connect");
+      //ESP.restart();
+  } 
+  else {
+      //if you get here you have connected to the WiFi    
+      Serial.println("connected...yeey :)");
+  }
+
 }
 
-bool isStringEmpty(const char *str) 
-{
-    return str == NULL || *str == '\0';
-}
-
-const char* toUpperCase(const char* str)
-{
-      static char result[BUFSIZ]; // Assuming a reasonable buffer size
-    int length = strlen(str);
-
-    for (int i = 0; i < length; i++) {
-        result[i] = toupper(str[i]);
-    }
-    result[length] = '\0'; // Null-terminate the new string
-
-    return result;
-}
 
 
 bool checkIfNumberValid()
@@ -59,19 +126,105 @@ void decodeMessage(const char* message)
   }
 }
 
+String getParam(String name){
+  //read parameter from server, for customhmtl input
+  String value;
+  if(wm.server->hasArg(name)) {
+    value = wm.server->arg(name);
+  }
+  return value;
+}
 
 
+
+void UpdateNumbers(const char* numbers) {
+  char* token = strtok((char*)numbers, ",");
+  int index = 0;
+
+  while (token != NULL && index < MAX_MOBILE_NUMBERS) {
+    strncpy(mobileNumbers[index], token, MOBILE_NUMBER_LENGTH - 1);
+    mobileNumbers[index][MOBILE_NUMBER_LENGTH - 1] = '\0'; // Null-terminate the string
+    writeNumberToEEPROM(index); // Write each number to EEPROM
+    token = strtok(NULL, ",");
+    index++;
+  }
+}
+
+void writeNumberToEEPROM(int index) {
+  char buffer[MOBILE_NUMBER_LENGTH];
+  strncpy(buffer, mobileNumbers[index], MOBILE_NUMBER_LENGTH - 1);
+  buffer[MOBILE_NUMBER_LENGTH - 1] = '\0'; // Null-terminate the string
+  EEPROM.put(index * MOBILE_NUMBER_LENGTH, buffer);
+  EEPROM.commit();
+}
+
+ /*
+  * Read From the EEPROM the list of SAVED Numbers.
+  */
+void readMobileNumbersFromEEPROM() {
+  for (int i = 0; i < MAX_MOBILE_NUMBERS; i++) {
+    char buffer[MOBILE_NUMBER_LENGTH];
+    EEPROM.get(i * MOBILE_NUMBER_LENGTH, buffer);
+    if(buffer[0] == '\0'){break;}
+    strncpy(mobileNumbers[i], buffer, MOBILE_NUMBER_LENGTH);
+    mobileNumbers[i][MOBILE_NUMBER_LENGTH - 1] = '\0'; // Null-terminate the string
+
+     
+
+  }
+}
+
+
+
+//====================== Calls for On change of setting ======================
+void ToggleGSM(bool state)
+{
+  state ? EEPROM.write(GSMToggleEPROM,1) : EEPROM.write(GSMToggleEPROM,0);
+  EEPROM.commit();
+  GSMMode = state;
+}
+
+
+void SetAllowNumbers(const char* NumberListAsChar)
+{
+  UpdateNumbers(NumberListAsChar);
+}
+
+
+
+
+//====================== Config Menu Custom Call back ======================
+void saveParamCallback(){
+  Serial.println("[CALLBACK] saveParamCallback fired");
+  Serial.println("PARAM GSMToggleId = " + getParam("GSMToggleId"));
+  ToggleGSM(strcmp(getParam("GSMToggleId").c_str(),"true") == 0);
+  Serial.println("PARAM MobileNumberAllowListId = " + getParam("MobileNumberAllowListId"));
+  SetAllowNumbers(getParam("MobileNumberAllowListId").c_str());
+  
+}
+
+
+
+
+void GSMBufferLoop()
+{
+   if(Serial2.available()){
+      DynamicJsonDocument jsonSerialMessage(1024);
+      deserializeJson(jsonSerialMessage, Serial2.readString());
+      const char* message = jsonSerialMessage["message"];
+      
+      if(!UtilsisStringEmpty(message))
+      {
+        Serial.println(UtilstoUpperCase(message)); 
+        decodeMessage(UtilstoUpperCase(message));
+      }
+    }
+}
 
 void loop() {
-  if(Serial2.available()){
-    DynamicJsonDocument jsonSerialMessage(1024);
-    deserializeJson(jsonSerialMessage, Serial2.readString());
-    const char* message = jsonSerialMessage["message"];
-    if(!isStringEmpty(message))
-    {
-      Serial.println(toUpperCase(message)); 
-      decodeMessage(toUpperCase(message));
-    }
+  if(wm_nonblocking) wm.process();
+  if(GSMMode){
+    GSMBufferLoop();
   }
 
 }
