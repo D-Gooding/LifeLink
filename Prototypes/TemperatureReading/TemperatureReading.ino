@@ -7,8 +7,8 @@
  */
 
 #include <DHT.h>
-#define DHT_SENSOR_PIN  21 // ESP32 pin GPIO21 connected to DHT11 sensor
-#define DHT_SENSOR_TYPE DHT11
+#define DHT_SENSOR_PIN  21 // ESP32 pin GPIO21 connected to DHT22 sensor
+#define DHT_SENSOR_TYPE DHT22
 
 DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
 

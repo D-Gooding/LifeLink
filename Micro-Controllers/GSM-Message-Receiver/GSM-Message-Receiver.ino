@@ -6,7 +6,7 @@ char buffer[256]; //stops overflow of arduino
 
 SoftwareSerial GSM(7, 8); //RX and TX
 
-bool USB_DEBUG_MODE = false;
+bool USB_DEBUG_MODE = true;
 
 
 //Added debugging options on the serial outputs 
@@ -97,7 +97,7 @@ void setup() {
 
   //done
   serialPrintString("Done");
-  sendSMS();
+  sendSMS("+447927401195","GSM Online");
   
 }
 
@@ -250,13 +250,31 @@ void SIM900power()
  * This is a check alive text that can be done to check if the system is online.
  */
 
-void sendSMS()
+void sendSMS(const char* phoneNumber,const char* message)
 {
-  GSM.print("AT+CMGS=\"+447927401195\"\r\n");
+  //GSM.print((("AT+CMGS=\"%s\"\r\n"),Number));
+
+  char atCommand[50];
+  snprintf(atCommand, sizeof(atCommand), "AT+CMGS=\"%s\"\r\n", phoneNumber);
+  GSM.print(atCommand);
+
   delay(3000);
-  GSM.print("GSM System Online");
+  GSM.print(message);
   GSM.print((char)26);
   GSM.print("\r\n");
+}
+
+void checkOutbox()
+{
+  if(Serial.available())
+  {
+    DynamicJsonDocument jsonSerialMessage(1024);
+      deserializeJson(jsonSerialMessage, Serial.readString());
+      const char* phone = jsonSerialMessage["phoneNumber"];
+      const char* message = jsonSerialMessage["message"];
+      sendSMS(phone,message);
+  
+  }
 }
 
 void loop() {
@@ -284,5 +302,6 @@ void loop() {
     }
     
   }
+  checkOutbox();
 
 }
