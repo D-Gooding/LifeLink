@@ -2,6 +2,7 @@
 #include <SoftwareSerial.h> //allows connection between the two boards
 #include <ArduinoJson.h>
 
+
 char buffer[256]; //stops overflow of arduino
 
 SoftwareSerial GSM(7, 8); //RX and TX
@@ -17,7 +18,6 @@ void serialPrintString(const __FlashStringHelper c[])
     Serial.println(c);
   }
 }
-
 void serialPrintString(const char c[])
 {
   if(USB_DEBUG_MODE)
@@ -97,7 +97,7 @@ void setup() {
 
   //done
   serialPrintString("Done");
-  sendSMS();
+  sendSMS("+447927401195","GSM Online");
   
 }
 
@@ -148,6 +148,7 @@ void readGSMBuffer(){
 
 /*
  * If a text is recived, turn the data into a Readable string
+ * This code was sourced from this youtube video i can no longer find :(
  */
 bool receiveSMS(char *message, char *phone, char *datetime){
   //if SMS has been received buffer will contain data in the format
@@ -247,16 +248,57 @@ void SIM900power()
 }
 
 /*
- * This is a check alive text that can be done to check if the system is online.
+ * Sends a message to a list of allowed numbers
  */
 
-void sendSMS()
+void sendSMS(const char* phoneNumber,const char* message)
 {
-  GSM.print("AT+CMGS=\"+447927401195\"\r\n");
+
+  char atCommand[50];
+  snprintf(atCommand, sizeof(atCommand), "AT+CMGS=\"%s\"\r\n", phoneNumber);
+  GSM.print(atCommand);
+
   delay(3000);
-  GSM.print("GSM System Online");
+  GSM.print(message);
   GSM.print((char)26);
   GSM.print("\r\n");
+}
+
+
+/*
+ * Checks if any new messages are needed to be sent
+ */
+void checkOutbox()
+{
+  if (Serial.available()) {
+    Serial.println("Reading");
+
+    // Read the incoming data until a newline character is encountered
+    String jsonString = Serial.readStringUntil('\n');
+
+    serialPrintString(jsonString.c_str());
+
+    // Create a JSON document
+    StaticJsonDocument<200> jsonSerialMessage;
+
+    DeserializationError error = deserializeJson(jsonSerialMessage, jsonString);
+
+    // Check for deserialization errors
+    if (error) {
+      serialPrintString(F("Deserialization failed: "));
+      serialPrintString(error.c_str());
+    } else {
+      const char* phone = jsonSerialMessage["p"];
+      const char* message = jsonSerialMessage["m"];
+
+      serialPrintString("Phone: ");
+      serialPrintString(phone);
+      serialPrintString("Message: ");
+      serialPrintString(message);
+      
+      sendSMS(phone, message);
+    }
+  }
 }
 
 void loop() {
@@ -284,5 +326,6 @@ void loop() {
     }
     
   }
+  checkOutbox();
 
 }
