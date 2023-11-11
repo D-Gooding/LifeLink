@@ -1,4 +1,5 @@
 #include "Webserver_Utils.h"
+#include "General_Utils.h"
 #include <cstring>
 #include <regex>
 
@@ -7,10 +8,8 @@ const char* ReconstructNumbers(char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUM
   static char reconstructed[256];
   reconstructed[0] = '\0';
 
-  std::regex MobileNumberPattern("^[0-9+]+$");
-
   for (int i = 0; i < MAX_MOBILE_NUMBERS; i++) {
-    if(!std::regex_match(mobileNumbers[i], MobileNumberPattern))
+    if(!isMobileNumber(mobileNumbers[i]))
     {
       break;
     }

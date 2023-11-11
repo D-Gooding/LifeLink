@@ -2,11 +2,12 @@
 #include <SoftwareSerial.h> //allows connection between the two boards
 #include <ArduinoJson.h>
 
+
 char buffer[256]; //stops overflow of arduino
 
 SoftwareSerial GSM(7, 8); //RX and TX
 
-bool USB_DEBUG_MODE = true;
+bool USB_DEBUG_MODE = false;
 
 
 //Added debugging options on the serial outputs 
@@ -266,14 +267,41 @@ void sendSMS(const char* phoneNumber,const char* message)
 
 void checkOutbox()
 {
-  if(Serial.available())
-  {
-    DynamicJsonDocument jsonSerialMessage(1024);
-      deserializeJson(jsonSerialMessage, Serial.readString());
-      const char* phone = jsonSerialMessage["phoneNumber"];
-      const char* message = jsonSerialMessage["message"];
-      sendSMS(phone,message);
-  
+  if (Serial.available()) {
+    Serial.println("Reading");
+
+    // Read the incoming data until a newline character is encountered
+    
+    String jsonString = Serial.readStringUntil('\n');
+    Serial.println(jsonString);
+
+    //Serial.println("Free memory before deserialization: " + String(freeMemory()));
+
+    // Create a JSON document
+    StaticJsonDocument<200> jsonSerialMessage;
+
+    // Deserialize the JSON string
+    DeserializationError error = deserializeJson(jsonSerialMessage, jsonString);
+    //Serial.println("Free memory after deserialization: " + String(freeMemory()));
+
+    // Check for deserialization errors
+    if (error) {
+      Serial.print("Deserialization failed: ");
+      Serial.println(error.c_str());
+    } else {
+      // Extract data from the JSON document
+      const char* phone = jsonSerialMessage["p"];
+      const char* message = jsonSerialMessage["m"];
+
+      // Print the extracted data
+      Serial.print("Phone: ");
+      Serial.println(phone);
+      Serial.print("Message: ");
+      Serial.println(message);
+
+      // Do something with the data, for example, send an SMS
+      sendSMS(phone, message);
+    }
   }
 }
 

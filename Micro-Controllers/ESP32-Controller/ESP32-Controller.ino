@@ -3,25 +3,35 @@
 #include <EEPROM.h>
 #include "Webserver_Utils.h"
 #include "General_Utils.h"
+#include <DHT.h>
 
+// Define Temperature sensor
+#define DHT_SENSOR_PIN  21 // ESP32 pin GPIO21 connected to DHT22 sensor
+#define DHT_SENSOR_TYPE DHT22
 
+DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
+unsigned long lastSampleTime = 0;
+const unsigned long sampleInterval = 5000;
+float roomTempThreshold = 22.0;
+bool coldWarning = false;
+RollingAverage* rollingAverage;
+
+// Serial coms with the arduino board
 #define RXp2 16
 #define TXp2 17
 
+// WIFI manager
 #define TRIGGER_PIN 0
-
-// defining the bytes were gonna need
-#define GSM_TOGGLE_SIZE 1
-
 #define AP_NAME "LifeLinkAP"
 #define AP_PASSWORD "password"
 
+// Define mobile number storage method
+char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUMBER_LENGTH];
 
 bool wm_nonblocking = false; // change to true to use non blocking
 
 
 bool GSMMode = true;
-char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUMBER_LENGTH];
 int GSMToggleEPROM = 0;
 
 
@@ -30,11 +40,20 @@ WiFiManagerParameter GSMToggleParam; // global param ( for non blocking w params
 WiFiManagerParameter AllowListNumbers;
 
 
+//GSM Outbox buffer
+const size_t MAX_NUMBER_MESSAGES = 10;
+std::deque<StaticJsonDocument<200>*> OutboxMessages;
+
+
 
 void setup() {
   Serial.begin(115200);
   Serial2.begin(9600, SERIAL_8N1, RXp2, TXp2);
   pinMode(LED_BUILTIN, OUTPUT);
+  dht_sensor.begin();
+
+  rollingAverage = new RollingAverage();
+
 
   // initialize EEPROM with predefined size
   EEPROM.begin(20 + (MAX_MOBILE_NUMBERS * MOBILE_NUMBER_LENGTH ));
@@ -219,6 +238,7 @@ void ToggleGSM(bool state)
 {
   state ? EEPROM.write(GSMToggleEPROM,1) : EEPROM.write(GSMToggleEPROM,0);
   EEPROM.commit();
+  Serial.print("GSMENABLED");
   GSMMode = state;
 }
 
@@ -242,7 +262,50 @@ void saveParamCallback(){
 }
 
 
+void CheckRoomTemperature()
+{
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastSampleTime >= sampleInterval) {
+    lastSampleTime = currentMillis;
+    float currentTemperature = dht_sensor.readTemperature();
+    if((currentTemperature < roomTempThreshold) && coldWarning == false)
+    {
+      rollingAverage->pushNew(currentTemperature);
+      float currentAverage = rollingAverage->getAverage();
+      if(currentAverage != 200.f || currentAverage < roomTempThreshold){
+        coldWarning = true;
+        char message[50];  // Adjust the size based on your message length
+        snprintf(message, sizeof(message), "LOW TEMPERATURE!!! %.2f C", currentAverage);
+        Serial.println(message);
+        SendToOutbox(message);
+      }
 
+
+    }
+    if(currentTemperature > roomTempThreshold)
+    {
+      coldWarning = false;
+    }
+
+  }
+
+}
+
+void SendToOutbox(char* message)
+{
+  for (int i = 0; i < MAX_MOBILE_NUMBERS; i++) {
+    const char* currentMobileNumber = mobileNumbers[i];
+
+    // Check if the current mobile number is a valid number
+    if (isMobileNumber(currentMobileNumber) && strlen(currentMobileNumber) > 0) {
+      Serial.println(currentMobileNumber);
+      StaticJsonDocument<200>* jsonSerialMessage = new StaticJsonDocument<200>();
+      (*jsonSerialMessage)["p"] = currentMobileNumber;
+      (*jsonSerialMessage)["m"] = message;
+      OutboxMessages.push_back(jsonSerialMessage);
+    }
+  }
+}
 
 void GSMBufferLoop()
 {
@@ -258,12 +321,27 @@ void GSMBufferLoop()
       }
     }
 }
+void GSMOutboxLoop()
+{
+   if (!OutboxMessages.empty()) {
+    Serial.println("Message awaiting to be sent");
+    StaticJsonDocument<200>* message = OutboxMessages.front();
+    serializeJson(*message, Serial2);
+    delay(20);
+    OutboxMessages.pop_front();
+    delete message;
+  }
+
+
+}
 
 void loop() {
   if(wm_nonblocking) wm.process();
   checkButton();
+  CheckRoomTemperature();
   if(GSMMode){
     GSMBufferLoop();
+    GSMOutboxLoop();
   }
 
 }
