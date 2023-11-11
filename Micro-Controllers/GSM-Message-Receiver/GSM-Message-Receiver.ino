@@ -18,7 +18,6 @@ void serialPrintString(const __FlashStringHelper c[])
     Serial.println(c);
   }
 }
-
 void serialPrintString(const char c[])
 {
   if(USB_DEBUG_MODE)
@@ -149,6 +148,7 @@ void readGSMBuffer(){
 
 /*
  * If a text is recived, turn the data into a Readable string
+ * This code was sourced from this youtube video i can no longer find :(
  */
 bool receiveSMS(char *message, char *phone, char *datetime){
   //if SMS has been received buffer will contain data in the format
@@ -248,12 +248,11 @@ void SIM900power()
 }
 
 /*
- * This is a check alive text that can be done to check if the system is online.
+ * Sends a message to a list of allowed numbers
  */
 
 void sendSMS(const char* phoneNumber,const char* message)
 {
-  //GSM.print((("AT+CMGS=\"%s\"\r\n"),Number));
 
   char atCommand[50];
   snprintf(atCommand, sizeof(atCommand), "AT+CMGS=\"%s\"\r\n", phoneNumber);
@@ -265,41 +264,38 @@ void sendSMS(const char* phoneNumber,const char* message)
   GSM.print("\r\n");
 }
 
+
+/*
+ * Checks if any new messages are needed to be sent
+ */
 void checkOutbox()
 {
   if (Serial.available()) {
     Serial.println("Reading");
 
     // Read the incoming data until a newline character is encountered
-    
     String jsonString = Serial.readStringUntil('\n');
-    Serial.println(jsonString);
 
-    //Serial.println("Free memory before deserialization: " + String(freeMemory()));
+    serialPrintString(jsonString.c_str());
 
     // Create a JSON document
     StaticJsonDocument<200> jsonSerialMessage;
 
-    // Deserialize the JSON string
     DeserializationError error = deserializeJson(jsonSerialMessage, jsonString);
-    //Serial.println("Free memory after deserialization: " + String(freeMemory()));
 
     // Check for deserialization errors
     if (error) {
-      Serial.print("Deserialization failed: ");
-      Serial.println(error.c_str());
+      serialPrintString(F("Deserialization failed: "));
+      serialPrintString(error.c_str());
     } else {
-      // Extract data from the JSON document
       const char* phone = jsonSerialMessage["p"];
       const char* message = jsonSerialMessage["m"];
 
-      // Print the extracted data
-      Serial.print("Phone: ");
-      Serial.println(phone);
-      Serial.print("Message: ");
-      Serial.println(message);
-
-      // Do something with the data, for example, send an SMS
+      serialPrintString("Phone: ");
+      serialPrintString(phone);
+      serialPrintString("Message: ");
+      serialPrintString(message);
+      
       sendSMS(phone, message);
     }
   }
