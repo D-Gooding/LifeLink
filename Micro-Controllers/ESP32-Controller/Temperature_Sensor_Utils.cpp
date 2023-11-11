@@ -19,6 +19,10 @@ bool shouldSendLowTempAlert(unsigned long currentMillis,float currentTemperature
         {
             TemperatureRollingAverage->pushNew(currentTemperature);
             float currentAverage = TemperatureRollingAverage->getAverage();
+            /*
+             * 200 is an impossible number to reach so instead 
+             * we use it to show we have not collected enough temperature readings.
+            */
             if(currentAverage != 200.f || currentAverage < roomTempThreshold){
                 coldWarning = true;
                 return true;
