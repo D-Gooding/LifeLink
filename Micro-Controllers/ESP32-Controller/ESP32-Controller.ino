@@ -3,6 +3,7 @@
 #include <EEPROM.h>
 #include "Webserver_Utils.h"
 #include "General_Utils.h"
+#include "Temperature_Sensor_Utils.h"
 #include <DHT.h>
 
 // Define Temperature sensor
@@ -10,11 +11,8 @@
 #define DHT_SENSOR_TYPE DHT22
 
 DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
-unsigned long lastSampleTime = 0;
-const unsigned long sampleInterval = 5000;
-float roomTempThreshold = 22.0;
-bool coldWarning = false;
-RollingAverage* rollingAverage;
+RollingAverage* TemperatureRollingAverage;
+
 
 // Serial coms with the arduino board
 #define RXp2 16
@@ -51,9 +49,7 @@ void setup() {
   Serial2.begin(9600, SERIAL_8N1, RXp2, TXp2);
   pinMode(LED_BUILTIN, OUTPUT);
   dht_sensor.begin();
-
-  rollingAverage = new RollingAverage();
-
+  TemperatureRollingAverage = new RollingAverage();
 
   // initialize EEPROM with predefined size
   EEPROM.begin(20 + (MAX_MOBILE_NUMBERS * MOBILE_NUMBER_LENGTH ));
@@ -261,36 +257,27 @@ void saveParamCallback(){
   
 }
 
-
+/*
+* Samples the current temperature and sees if we need to 
+* Alert a career of a low temperature
+*/
 void CheckRoomTemperature()
 {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastSampleTime >= sampleInterval) {
-    lastSampleTime = currentMillis;
-    float currentTemperature = dht_sensor.readTemperature();
-    if((currentTemperature < roomTempThreshold) && coldWarning == false)
-    {
-      rollingAverage->pushNew(currentTemperature);
-      float currentAverage = rollingAverage->getAverage();
-      if(currentAverage != 200.f || currentAverage < roomTempThreshold){
-        coldWarning = true;
-        char message[50];  // Adjust the size based on your message length
-        snprintf(message, sizeof(message), "LOW TEMPERATURE!!! %.2f C", currentAverage);
-        Serial.println(message);
-        SendToOutbox(message);
-      }
-
-
-    }
-    if(currentTemperature > roomTempThreshold)
-    {
-      coldWarning = false;
-    }
-
+  float currentTemperature = dht_sensor.readTemperature();
+  if(shouldSendLowTempAlert(currentMillis,currentTemperature,TemperatureRollingAverage))
+  {
+    char message[50];
+    snprintf(message, sizeof(message), "LOW TEMPERATURE!!! %.2f C", TemperatureRollingAverage->getAverage());
+    Serial.println(message);
+    SendToOutbox(message);
   }
-
 }
 
+
+/*
+* For all of the saved numbers add to the send buffer all the messages.
+*/
 void SendToOutbox(char* message)
 {
   for (int i = 0; i < MAX_MOBILE_NUMBERS; i++) {
@@ -321,12 +308,15 @@ void GSMBufferLoop()
       }
     }
 }
+
+// For all saved numbers send the messages in the buffer
 void GSMOutboxLoop()
 {
    if (!OutboxMessages.empty()) {
     Serial.println("Message awaiting to be sent");
     StaticJsonDocument<200>* message = OutboxMessages.front();
     serializeJson(*message, Serial2);
+    //delay added to give it time to send
     delay(20);
     OutboxMessages.pop_front();
     delete message;

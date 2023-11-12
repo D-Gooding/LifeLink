@@ -16,6 +16,11 @@ void RollingAverage::pushNew(float val)
 
 float RollingAverage::getAverage()
 {
+    /*
+     * 200 is an impossible number to reach so instead 
+     * we use it to show we have not collected enough temperature readings.
+     */
+    
     if(TemperatureRollingAverage.size() != MAX_QUEUE_SIZE){
         return 200.f;
     }
