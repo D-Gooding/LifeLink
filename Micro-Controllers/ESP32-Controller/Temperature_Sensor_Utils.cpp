@@ -2,7 +2,7 @@
 
 unsigned long lastSampleTime = 0;  // Define the variable
 const unsigned long sampleInterval = 5000;
-float roomTempThreshold = 22.0;  // Define the variable
+float roomTempThreshold = 50.0;  // Define the variable
 bool coldWarning = false;  // Define the variable
 
 

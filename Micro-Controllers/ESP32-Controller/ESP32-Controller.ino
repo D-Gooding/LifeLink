@@ -40,7 +40,7 @@ bool isWifiConnected = false;
 //============================ MQTT Defualts ============================
 #define MQTT_BROKER "test.mosquitto.org" 
 #define MQTT_PORT (1883) 
-#define MQTT_PUBLIC_TOPIC "uok/iot/dmag2/LowRoomTemp"
+#define MQTT_PUBLIC_LOW_TEMPERATURE_TOPIC "uok/iot/dmag2/LowRoomTemp"
 #define MQTT_PUBLIC_Receive_TvCommand_TOPIC "uok/iot/dmag2/TvCommand"
 WiFiClient wifiClient; 
 PubSubClient client(wifiClient); 
@@ -66,9 +66,16 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length) {
 }
 
 void DefaultMQTTSubs()
-{
-  client.subscribe(MQTT_PUBLIC_Receive_TvCommand_TOPIC);
-  client.setCallback(MQTTcallback);
+{ while(!client.connected()){
+    if (client.connect(("ESP32-"+String(random(0xffff),HEX)).c_str())){
+      client.subscribe(MQTT_PUBLIC_Receive_TvCommand_TOPIC);
+      client.setCallback(MQTTcallback);
+    }
+    else{
+      Serial.printf("failed, rc=%d try again in 5 seconds",client.state()); //report error 
+      delay(5000); // wait5seconds 
+    }
+  }
 }
 
 void setup() {
@@ -346,7 +353,7 @@ void GSMBufferLoop()
 void GSMOutboxLoop()
 {
    if (!OutboxMessages.empty()) {
-    Serial.println("Message awaiting to be sent");
+    Serial.println("Message awaiting to be sent Via GSM");
     StaticJsonDocument<200>* message = OutboxMessages.front();
     serializeJson(*message, Serial2);
     //delay added to give it time to send
@@ -358,13 +365,31 @@ void GSMOutboxLoop()
 
 }
 
+void MQTTOutboxLoop()
+{
+  if (!OutboxMessages.empty()) {
+    Serial.println("Message awaiting to be sent Via MQTT");
+    StaticJsonDocument<200>& message = *OutboxMessages.front();
+    serializeJson(message, Serial);
+    client.publish(MQTT_PUBLIC_LOW_TEMPERATURE_TOPIC,message["m"]); //publishmessage 
+    delay(20);
+    OutboxMessages.pop_front();
+    delete &message;
+  }
+
+}
+
 void loop() {
   if(wm_nonblocking) wm.process();
+  client.loop(); 
   checkButton();
   CheckRoomTemperature();
   if(GSMMode){
     GSMBufferLoop();
     GSMOutboxLoop();
+  }
+  else{
+    MQTTOutboxLoop();
   }
 
 }
