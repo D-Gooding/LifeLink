@@ -83,7 +83,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         buttonOn.setOnClickListener(this);
 
 
-        mqttHandler = new MqttHandler();
+        mqttHandler = new MqttHandler(this);
         mqttHandler.connect(BROKER_URL,CLIENT_ID);
         subscribeToTopic("uok/iot/dmag2/LowRoomTemp");
     }
