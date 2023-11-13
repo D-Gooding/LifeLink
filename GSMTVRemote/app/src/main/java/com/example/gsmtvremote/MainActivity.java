@@ -15,11 +15,14 @@ import android.widget.Toast;
 import android.widget.Button;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+
+    private static final String BROKER_URL = "tcp://test.mosquitto.org:1883";
+    private static final String CLIENT_ID = "mqttx_36941f34";
+
+    private MqttHandler mqttHandler;
     private EditText editTextNumber;
     private EditText editTextMessage;
-
     private EditText NumPadText;
-
     private int volumeLevel;
 
 
@@ -80,8 +83,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         buttonOn.setOnClickListener(this);
 
 
+        mqttHandler = new MqttHandler();
+        mqttHandler.connect(BROKER_URL,CLIENT_ID);
+        subscribeToTopic("uok/iot/dmag2/LowRoomTemp");
+    }
+
+
+    private void publishMessage(String topic,String message)
+    {
+        Toast.makeText(this, "Publish message: " + message, Toast.LENGTH_SHORT).show();
+        mqttHandler.publish(topic,message);
+    }
+    private void subscribeToTopic(String topic)
+    {
+        Toast.makeText(this, "Subscribe to topic " + topic, Toast.LENGTH_SHORT).show();
+        mqttHandler.subscribe(topic);
 
     }
+
 
     public void sendSMS(View view){
         editTextMessage = findViewById(R.id.editTextMessage);
@@ -105,7 +124,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         else{
             message = ("TV CHL "+message);
         }
-
+        publishMessage("uok/iot/dmag2/TvCommand", message);
         SmsManager mySmsManger = SmsManager.getDefault();
         mySmsManger.sendTextMessage(number,null,message,null,null);
         Toast.makeText(this,"Sent to TV", Toast.LENGTH_SHORT).show();
@@ -200,5 +219,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         }
 
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mqttHandler.disconnect();
     }
 }

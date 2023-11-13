@@ -1,7 +1,7 @@
 import 'package:flutterflow_ui/flutterflow_ui.dart';
 // Remember to copy the import above and check for any dependencies in the pubspec view
 
-import '../flutter_flow/flutter_flow_widgets.dart';
+import 'package:flutter_flow/flutter_flow_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 

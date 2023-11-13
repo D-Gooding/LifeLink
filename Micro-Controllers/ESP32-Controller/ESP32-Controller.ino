@@ -1,12 +1,13 @@
 #include <ArduinoJson.h>
 #include <WiFiManager.h>
 #include <EEPROM.h>
+#include <PubSubClient.h> 
 #include "Webserver_Utils.h"
 #include "General_Utils.h"
 #include "Temperature_Sensor_Utils.h"
 #include <DHT.h>
 
-// Define Temperature sensor
+// ============================ Define Temperature sensor ============================
 #define DHT_SENSOR_PIN  21 // ESP32 pin GPIO21 connected to DHT22 sensor
 #define DHT_SENSOR_TYPE DHT22
 
@@ -14,35 +15,61 @@ DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
 RollingAverage* TemperatureRollingAverage;
 
 
-// Serial coms with the arduino board
+//============================ Serial Coms for Arduino->GSM board ============================
 #define RXp2 16
 #define TXp2 17
 
-// WIFI manager
+
+
+
+//============================ WIFI MANAGER ============================
 #define TRIGGER_PIN 0
 #define AP_NAME "LifeLinkAP"
 #define AP_PASSWORD "password"
 
-// Define mobile number storage method
-char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUMBER_LENGTH];
-
+WiFiManager wm;
+WiFiManagerParameter GSMToggleParam; // global param ( for non blocking w params )
+WiFiManagerParameter AllowListNumbers;
 bool wm_nonblocking = false; // change to true to use non blocking
-
 
 bool GSMMode = true;
 int GSMToggleEPROM = 0;
 
+bool isWifiConnected = false;
 
-WiFiManager wm;
-WiFiManagerParameter GSMToggleParam; // global param ( for non blocking w params )
-WiFiManagerParameter AllowListNumbers;
+//============================ MQTT Defualts ============================
+#define MQTT_BROKER "test.mosquitto.org" 
+#define MQTT_PORT (1883) 
+#define MQTT_PUBLIC_TOPIC "uok/iot/dmag2/LowRoomTemp"
+#define MQTT_PUBLIC_Receive_TvCommand_TOPIC "uok/iot/dmag2/TvCommand"
+WiFiClient wifiClient; 
+PubSubClient client(wifiClient); 
 
+
+
+
+char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUMBER_LENGTH];
 
 //GSM Outbox buffer
 const size_t MAX_NUMBER_MESSAGES = 10;
 std::deque<StaticJsonDocument<200>*> OutboxMessages;
 
 
+void MQTTcallback(char* topic, byte* payload, unsigned int length) {
+  // Handle the received message here
+  Serial.println("Message arrived in topic: " + String(topic));
+  Serial.println("Message:");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
+void DefaultMQTTSubs()
+{
+  client.subscribe(MQTT_PUBLIC_Receive_TvCommand_TOPIC);
+  client.setCallback(MQTTcallback);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -58,7 +85,6 @@ void setup() {
   pinMode(TRIGGER_PIN, INPUT);
 
 
-  bool res;
 
   if(wm_nonblocking) wm.setConfigPortalBlocking(false);
 
@@ -69,6 +95,10 @@ void setup() {
   Serial.println(EEPROM.read(GSMToggleEPROM));
   Serial.println(ReconstructNumbers(mobileNumbers));
   int customFieldLength = 40;
+
+
+  client.setServer(MQTT_BROKER, MQTT_PORT); //set broker settings
+
 
 
   // ============================== GSM Radio Button select ==============================
@@ -102,16 +132,18 @@ void setup() {
   // set dark theme
   wm.setClass("invert");
 
- res = wm.autoConnect(AP_NAME,AP_PASSWORD); // password protected ap
+  isWifiConnected = wm.autoConnect(AP_NAME,AP_PASSWORD); // password protected ap
 
 
-  if(!res) {
+  if(!isWifiConnected) {
       Serial.println("Failed to connect");
       //ESP.restart();
   } 
   else {
       //if you get here you have connected to the WiFi    
       Serial.println("connected...yeey :)");
+      DefaultMQTTSubs();
+
   }
 
 }
@@ -134,15 +166,16 @@ void checkButton(){
       
       // start portal w delay
       Serial.println("Starting config portal");
-      wm.setConfigPortalTimeout(120);
-      
       if (!wm.startConfigPortal(AP_NAME,AP_PASSWORD)) {
         Serial.println("failed to connect or hit timeout");
         delay(3000);
-        // ESP.restart();
+        isWifiConnected = false;
       } else {
         //if you get here you have connected to the WiFi
         Serial.println("connected...yeey :)");
+        DefaultMQTTSubs();
+        isWifiConnected = true;
+
       }
     }
   }
