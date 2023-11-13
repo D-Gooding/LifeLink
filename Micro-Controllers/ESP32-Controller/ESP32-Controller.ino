@@ -59,9 +59,21 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length) {
   // Handle the received message here
   Serial.println("Message arrived in topic: " + String(topic));
   Serial.println("Message:");
+
+  // Allocate a buffer for the message
+  char message[length + 1]; // +1 for null-terminator
+
   for (int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
+    message[i] = (char)payload[i];
   }
+
+  // Null-terminate the string
+  message[length] = '\0';
+
+  // Process the message
+  decodeMessage(UtilstoUpperCase(message));
+
   Serial.println();
 }
 
