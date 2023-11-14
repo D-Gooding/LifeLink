@@ -57,9 +57,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         Button online = findViewById(R.id.CheckOnline);
 
-        ImageButton buttonBBC1 = findViewById(R.id.BBCButton);
-        ImageButton buttonitv3 = findViewById(R.id.itv3Button);
-        ImageButton buttonOn = findViewById(R.id.OnButton);
+        Button buttonBBC1 = findViewById(R.id.BBCButton);
+        Button buttonitv3 = findViewById(R.id.itv3Button);
+        Button buttonOn = findViewById(R.id.OnButton);
 
         GSMToggleInstance = findViewById(R.id.GSMToggle);
 

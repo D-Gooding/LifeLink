@@ -7,6 +7,7 @@
     android:layout_height="match_parent"
     android:layout_row="5"
     android:layout_centerHorizontal="true"
+    android:background="@color/appBackground"
     tools:context=".MainActivity">
 
 
@@ -20,15 +21,17 @@
             android:id="@+id/editTextMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_margin="15dp"
             android:autofillHints=""
+            android:background="@color/textBackground"
             android:ems="10"
             android:hint="@string/channel"
-            android:inputType="textPersonName" />
+            android:inputType="textPersonName"
+            android:padding="10dp" />
 
         <GridLayout
-            android:layout_width="273dp"
-            android:layout_height="438dp"
+            android:layout_width="280dp"
+            android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
             android:layout_centerVertical="true"
             android:layout_marginTop="11dp"
@@ -39,125 +42,185 @@
 
             <Button
                 android:id="@+id/n1"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_1" />
+                android:text="@string/_1"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n2"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_2" />
+                android:text="@string/_2"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n3"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_3" />
+                android:text="@string/_3"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n4"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_4" />
+                android:text="@string/_4"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n5"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_5" />
+                android:text="@string/_5"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n6"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_6" />
+                android:text="@string/_6"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n7"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_7" />
+                android:text="@string/_7"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n8"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_8" />
+                android:text="@string/_8"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/n9"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/_9" />
+                android:text="@string/_9"
+                android:textSize="24sp" />
 
             <Button
                 android:id="@+id/volPlus"
+                style="@style/VolumeButton"
                 android:layout_width="wrap_content"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
+                android:layout_marginTop="15dp"
                 android:height="70dp"
                 android:text="@string/VolumePlus"
-                android:textColor="#000000"
+                android:textColor="@color/textBackground"
+                android:textSize="20sp"
                 tools:text="@string/VolumePlus" />
 
             <Button
                 android:id="@+id/n0"
+                style="@style/NumberButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
+                android:layout_marginBottom="15dp"
                 android:height="70dp"
-                android:text="@string/_0" />
+                android:text="@string/_0"
+                android:textSize="24sp" />
 
-            <ImageButton
+            <Button
                 android:id="@+id/BBCButton"
-                android:layout_width="86dp"
+                style="@style/CustomButton"
+                android:layout_width="wrap_content"
                 android:layout_height="70dp"
-                android:contentDescription="@string/bbc_1_button"
-                android:cropToPadding="true"
-                app:srcCompat="@mipmap/ic_launcher_round" />
+                android:layout_margin="3dp"
+                android:layout_marginTop="15dp"
+                android:height="70dp"
+                android:text="BBC1"
+                android:textSize="20sp"
+                tools:text="BBC1" />
 
             <Button
                 android:id="@+id/volNeg"
+                style="@style/VolumeButton"
                 android:layout_width="wrap_content"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
+                android:layout_marginBottom="15dp"
                 android:height="70dp"
                 android:text="@string/S"
+                android:textSize="20sp"
                 tools:text="@string/S" />
 
-            <ImageButton
+            <Button
                 android:id="@+id/OnButton"
-                android:layout_width="87dp"
-                android:layout_height="79dp"
-                android:adjustViewBounds="true"
+                style="@style/OnButton"
+                android:layout_width="wrap_content"
+                android:layout_height="70dp"
+                android:layout_margin="3dp"
+                android:layout_marginTop="15dp"
+                android:height="70dp"
                 android:contentDescription="@string/on_button"
-                app:srcCompat="@mipmap/onbutton_foreground" />
+                android:text="On"
+                android:textSize="20sp" />
 
-            <ImageButton
+            <Button
                 android:id="@+id/itv3Button"
-                android:layout_width="89dp"
-                android:layout_height="74dp"
-                android:contentDescription="@string/itv3_button"
-                app:srcCompat="@mipmap/itv3_button_foreground" />
+                style="@style/CustomButton"
+                android:layout_width="wrap_content"
+                android:layout_height="70dp"
+                android:layout_margin="3dp"
+                android:layout_marginBottom="15dp"
+                android:height="70dp"
+                android:text="ITV3"
+                android:textSize="20sp"
+                tools:text="ITV3" />
 
             <Button
                 android:id="@+id/clear"
+                style="@style/ClearButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
-                android:text="@string/clear" />
+                android:text="@string/clear"
+                android:textSize="20sp" />
 
             <Button
                 android:id="@+id/CheckOnline"
+                style="@style/IsOnlineButton"
                 android:layout_width="wrap_content"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
                 android:text="@string/online"
-                android:textSize="14sp"
+                android:textSize="20sp"
                 android:textStyle="bold" />
 
             <Button
                 android:id="@+id/send"
+                style="@style/SendButton"
                 android:layout_height="70dp"
+                android:layout_margin="3dp"
                 android:height="70dp"
                 android:onClick="sendCommand"
-                android:text="@string/send" />
+                android:text="@string/send"
+                android:textSize="20sp" />
 
 
         </GridLayout>
@@ -169,7 +232,8 @@
             android:gravity="center"
             android:paddingTop="10sp"
             android:text="Toggle GSM"
-            android:textSize="16sp" />
+            android:textColor="@color/textBackground"
+            android:textSize="20sp" />
 
         <Switch
             android:id="@+id/GSMToggle"
