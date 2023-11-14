@@ -11,8 +11,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.Switch;
 import android.widget.Toast;
-import android.widget.Button;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -24,8 +24,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private EditText editTextMessage;
     private EditText NumPadText;
     private int volumeLevel;
+    boolean isGsmMode;
 
-
+    Switch GSMToggleInstance;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +61,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ImageButton buttonitv3 = findViewById(R.id.itv3Button);
         ImageButton buttonOn = findViewById(R.id.OnButton);
 
+        GSMToggleInstance = findViewById(R.id.GSMToggle);
+
         button1.setOnClickListener(this);
         button2.setOnClickListener(this);
         button3.setOnClickListener(this);
@@ -82,9 +85,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         buttonitv3.setOnClickListener(this);
         buttonOn.setOnClickListener(this);
 
+        GSMToggleInstance.setOnClickListener(this);
+
 
         mqttHandler = new MqttHandler(this);
         mqttHandler.connect(BROKER_URL,CLIENT_ID);
+        isGsmMode = GSMToggleInstance.isChecked();
         subscribeToTopic("uok/iot/dmag2/LowRoomTemp");
     }
 
@@ -102,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    public void sendSMS(View view){
+    public void sendCommand(View view){
         editTextMessage = findViewById(R.id.editTextMessage);
         String message = editTextMessage.getText().toString();
         String number = ("07379413108-");
@@ -124,15 +130,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         else{
             message = ("TV CHL "+message);
         }
-        publishMessage("uok/iot/dmag2/TvCommand", message);
-        SmsManager mySmsManger = SmsManager.getDefault();
-        mySmsManger.sendTextMessage(number,null,message,null,null);
-        Toast.makeText(this,"Sent to TV", Toast.LENGTH_SHORT).show();
+        if(!isGsmMode)
+        {
+            publishMessage("uok/iot/dmag2/TvCommand", message);
+        }
+        else{
+            SmsManager mySmsManger = SmsManager.getDefault();
+            mySmsManger.sendTextMessage(number,null,message,null,null);
+            Toast.makeText(this,"Sent to TV", Toast.LENGTH_SHORT).show();
+        }
         final EditText editTextMessage = (EditText) findViewById(R.id.editTextMessage);
         editTextMessage.setText("");
         volumeLevel = 0;
-
-
     }
 
     @Override
@@ -216,6 +225,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             case R.id.CheckOnline:
                 editTextMessage.setText("TEXT");
+                break;
+
+            case R.id.GSMToggle:
+                isGsmMode = GSMToggleInstance.isChecked();
 
         }
 
