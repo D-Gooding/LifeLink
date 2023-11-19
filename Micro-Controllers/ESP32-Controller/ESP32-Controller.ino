@@ -6,6 +6,8 @@
 #include "General_Utils.h"
 #include "Temperature_Sensor_Utils.h"
 #include <DHT.h>
+#include <IRremote.hpp>
+#include <map>
 
 // ============================ Define Temperature sensor ============================
 #define DHT_SENSOR_PIN  21 // ESP32 pin GPIO21 connected to DHT22 sensor
@@ -45,7 +47,25 @@ bool isWifiConnected = false;
 WiFiClient wifiClient; 
 PubSubClient client(wifiClient); 
 
+//============================ IR ============================
+const std::map<String, byte> TV_IR_COMMANDS = {
+  {"0",0x19},
+  {"1",0x10},
+  {"2",0x11},
+  {"3",0x12},
+  {"4",0x13},
+  {"5",0x14},
+  {"6",0x15},
+  {"7",0x16},
+  {"8",0x17},
+  {"9",0x18},
+  {"ON",0x3D},
+  {"VOL+",0x20},
+  {"VOL-",0x21}
+};
 
+uint8_t sRepeats = 1;
+const int SEND_PIN = 4;  // Pin connected to the IR emitter
 
 
 char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUMBER_LENGTH];
@@ -103,6 +123,9 @@ void setup() {
 
   pinMode(TRIGGER_PIN, INPUT);
 
+  IrSender.begin(SEND_PIN);
+  IrSender.enableIROut(38); // Call it with 38 kHz to initialize the values printed below
+  IrReceiver.enableIRIn(); // Start the IR receiver
 
 
   if(wm_nonblocking) wm.setConfigPortalBlocking(false);
@@ -205,6 +228,11 @@ bool checkIfNumberValid()
   //Check against saved list of numbers
 }
 
+
+
+
+
+
 void toggleTVON()
 {
     digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
@@ -214,10 +242,24 @@ void toggleTVON()
 }
 
 
+void send_ir_data(const char* cmd) {
+    Serial.flush(); // To avoid disturbing the software PWM generation by serial output interrupts
+
+    // clip repeats at 4
+    if (sRepeats > 4) {
+        sRepeats = 4;
+    }
+    // Results for the first loop to: Protocol=NEC Address=0x102 Command=0x34 Raw-Data=0xCB340102 (32 bits)
+    Serial.println(TV_IR_COMMANDS.at(cmd));
+    IrSender.sendPanasonic(0x8, TV_IR_COMMANDS.at(cmd), sRepeats);
+}
+
+
 void decodeTVCommand(const char* message)
 {
   if (strncmp(message, "ON", 2) == 0) {
     toggleTVON();
+    send_ir_data("ON");
   }
 }
 
@@ -225,8 +267,10 @@ void decodeTVCommand(const char* message)
 
 void decodeMessage(const char* message)
 {
+  Serial.print("decode message");
   //Is TV command
   if (strncmp(message, "TV", 2) == 0) {
+      Serial.print("match!");
     decodeTVCommand(message + 3);
   }
 }
@@ -349,9 +393,11 @@ void SendToOutbox(char* message)
 void GSMBufferLoop()
 {
    if(Serial2.available()){
-      DynamicJsonDocument jsonSerialMessage(1024);
+      Serial.println("reading buffer");
+      StaticJsonDocument<200> jsonSerialMessage;
       deserializeJson(jsonSerialMessage, Serial2.readString());
       const char* message = jsonSerialMessage["message"];
+      Serial.println(message);
       
       if(!UtilsisStringEmpty(message))
       {
@@ -396,12 +442,15 @@ void loop() {
   client.loop(); 
   checkButton();
   CheckRoomTemperature();
-  if(GSMMode){
+  if(GSMMode || true){
     GSMBufferLoop();
+    delay(20);
     GSMOutboxLoop();
+    delay(20);
+    MQTTOutboxLoop();
   }
   else{
-    MQTTOutboxLoop();
+    //MQTTOutboxLoop();
   }
 
 }

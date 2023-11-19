@@ -7,7 +7,7 @@ char buffer[256]; //stops overflow of arduino
 
 SoftwareSerial GSM(7, 8); //RX and TX
 
-bool USB_DEBUG_MODE = false;
+bool USB_DEBUG_MODE = true;
 
 
 //Added debugging options on the serial outputs 
