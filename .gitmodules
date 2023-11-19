@@ -1,0 +1,3 @@
+[submodule "Prototypes/8x8-Prototype/libraries/arduino-Max72xxPanel"]
+	path = Prototypes/8x8-Prototype/libraries/arduino-Max72xxPanel
+	url = git@github.com:markruys/arduino-Max72xxPanel.git

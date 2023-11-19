@@ -1,0 +1,44 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="NumberButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/number_button</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="VolumeButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/volume_button</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="CustomButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/custom_button</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="OnButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/on_button</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="ClearButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/clear_button</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="SendButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/send_buttom</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="IsOnlineButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/online_button</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+</resources>
