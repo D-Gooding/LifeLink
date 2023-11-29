@@ -125,7 +125,6 @@ void setup() {
 
   IrSender.begin(SEND_PIN);
   IrSender.enableIROut(38); // Call it with 38 kHz to initialize the values printed below
-  IrReceiver.enableIRIn(); // Start the IR receiver
 
 
   if(wm_nonblocking) wm.setConfigPortalBlocking(false);
@@ -145,7 +144,7 @@ void setup() {
 
   // ============================== GSM Radio Button select ==============================
 
-  // THIS IS SHIT...... YES I've tried the way you are thinking of..... but memory problem :(
+  // THIS IS BAD, fix later...... YES I've tried the way you are thinking of..... but memory problem :(
 
   if(GSMMode)
   {
@@ -231,9 +230,7 @@ bool checkIfNumberValid()
 
 
 
-
-
-void toggleTVON()
+void blinkOnboardLED()
 {
     digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
     delay(1000);                      // wait for a second
@@ -241,7 +238,7 @@ void toggleTVON()
     delay(1000); 
 }
 
-
+//========================= SEND IR =========================
 void send_ir_data(const char* cmd) {
     Serial.flush(); // To avoid disturbing the software PWM generation by serial output interrupts
 
@@ -249,17 +246,36 @@ void send_ir_data(const char* cmd) {
     if (sRepeats > 4) {
         sRepeats = 4;
     }
+    Serial.print("Sending IR ");
+    Serial.println(cmd);
     // Results for the first loop to: Protocol=NEC Address=0x102 Command=0x34 Raw-Data=0xCB340102 (32 bits)
     Serial.println(TV_IR_COMMANDS.at(cmd));
     IrSender.sendPanasonic(0x8, TV_IR_COMMANDS.at(cmd), sRepeats);
 }
 
+//========================= DECODE MESSAGE =========================
 
 void decodeTVCommand(const char* message)
 {
   if (strncmp(message, "ON", 2) == 0) {
-    toggleTVON();
+    blinkOnboardLED();
     send_ir_data("ON");
+  }
+  else if(strncmp(message, "CHL", 3) == 0)
+  {
+    blinkOnboardLED();
+    Serial.println("Is channel");
+    message = message + 4;
+    for (int i = 0; message[i] != '\0'; i++) {
+      delay(60);
+      Serial.print("number: ");
+      Serial.println(message[i]);
+      if (message[i] >= '0' && message[i] <= '9') {
+        char num[2] = { message[i], '\0' };
+        send_ir_data(num);
+      }
+    }
+
   }
 }
 
@@ -270,10 +286,25 @@ void decodeMessage(const char* message)
   Serial.print("decode message");
   //Is TV command
   if (strncmp(message, "TV", 2) == 0) {
-      Serial.print("match!");
     decodeTVCommand(message + 3);
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 String getParam(String name){
   //read parameter from server, for customhmtl input
@@ -393,11 +424,9 @@ void SendToOutbox(char* message)
 void GSMBufferLoop()
 {
    if(Serial2.available()){
-      Serial.println("reading buffer");
       StaticJsonDocument<200> jsonSerialMessage;
       deserializeJson(jsonSerialMessage, Serial2.readString());
       const char* message = jsonSerialMessage["message"];
-      Serial.println(message);
       
       if(!UtilsisStringEmpty(message))
       {
@@ -442,15 +471,12 @@ void loop() {
   client.loop(); 
   checkButton();
   CheckRoomTemperature();
-  if(GSMMode || true){
+  if(GSMMode){
     GSMBufferLoop();
-    delay(20);
     GSMOutboxLoop();
-    delay(20);
-    MQTTOutboxLoop();
   }
   else{
-    //MQTTOutboxLoop();
+    MQTTOutboxLoop();
   }
 
 }
