@@ -6,6 +6,8 @@
 #include "General_Utils.h"
 #include "Temperature_Sensor_Utils.h"
 #include <DHT.h>
+#include <IRremote.hpp>
+#include <map>
 
 // ============================ Define Temperature sensor ============================
 #define DHT_SENSOR_PIN  21 // ESP32 pin GPIO21 connected to DHT22 sensor
@@ -45,7 +47,25 @@ bool isWifiConnected = false;
 WiFiClient wifiClient; 
 PubSubClient client(wifiClient); 
 
+//============================ IR ============================
+const std::map<String, byte> TV_IR_COMMANDS = {
+  {"0",0x19},
+  {"1",0x10},
+  {"2",0x11},
+  {"3",0x12},
+  {"4",0x13},
+  {"5",0x14},
+  {"6",0x15},
+  {"7",0x16},
+  {"8",0x17},
+  {"9",0x18},
+  {"ON",0x3D},
+  {"VOL+",0x20},
+  {"VOL-",0x21}
+};
 
+uint8_t sRepeats = 1;
+const int SEND_PIN = 4;  // Pin connected to the IR emitter
 
 
 char mobileNumbers[MAX_MOBILE_NUMBERS][MOBILE_NUMBER_LENGTH];
@@ -103,6 +123,8 @@ void setup() {
 
   pinMode(TRIGGER_PIN, INPUT);
 
+  IrSender.begin(SEND_PIN);
+  IrSender.enableIROut(38); // Call it with 38 kHz to initialize the values printed below
 
 
   if(wm_nonblocking) wm.setConfigPortalBlocking(false);
@@ -122,7 +144,7 @@ void setup() {
 
   // ============================== GSM Radio Button select ==============================
 
-  // THIS IS SHIT...... YES I've tried the way you are thinking of..... but memory problem :(
+  // THIS IS BAD, fix later...... YES I've tried the way you are thinking of..... but memory problem :(
 
   if(GSMMode)
   {
@@ -205,7 +227,10 @@ bool checkIfNumberValid()
   //Check against saved list of numbers
 }
 
-void toggleTVON()
+
+
+
+void blinkOnboardLED()
 {
     digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
     delay(1000);                      // wait for a second
@@ -213,11 +238,44 @@ void toggleTVON()
     delay(1000); 
 }
 
+//========================= SEND IR =========================
+void send_ir_data(const char* cmd) {
+    Serial.flush(); // To avoid disturbing the software PWM generation by serial output interrupts
+
+    // clip repeats at 4
+    if (sRepeats > 4) {
+        sRepeats = 4;
+    }
+    Serial.print("Sending IR ");
+    Serial.println(cmd);
+    // Results for the first loop to: Protocol=NEC Address=0x102 Command=0x34 Raw-Data=0xCB340102 (32 bits)
+    Serial.println(TV_IR_COMMANDS.at(cmd));
+    IrSender.sendPanasonic(0x8, TV_IR_COMMANDS.at(cmd), sRepeats);
+}
+
+//========================= DECODE MESSAGE =========================
 
 void decodeTVCommand(const char* message)
 {
   if (strncmp(message, "ON", 2) == 0) {
-    toggleTVON();
+    blinkOnboardLED();
+    send_ir_data("ON");
+  }
+  else if(strncmp(message, "CHL", 3) == 0)
+  {
+    blinkOnboardLED();
+    Serial.println("Is channel");
+    message = message + 4;
+    for (int i = 0; message[i] != '\0'; i++) {
+      delay(60);
+      Serial.print("number: ");
+      Serial.println(message[i]);
+      if (message[i] >= '0' && message[i] <= '9') {
+        char num[2] = { message[i], '\0' };
+        send_ir_data(num);
+      }
+    }
+
   }
 }
 
@@ -225,11 +283,28 @@ void decodeTVCommand(const char* message)
 
 void decodeMessage(const char* message)
 {
+  Serial.print("decode message");
   //Is TV command
   if (strncmp(message, "TV", 2) == 0) {
     decodeTVCommand(message + 3);
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 String getParam(String name){
   //read parameter from server, for customhmtl input
@@ -349,7 +424,7 @@ void SendToOutbox(char* message)
 void GSMBufferLoop()
 {
    if(Serial2.available()){
-      DynamicJsonDocument jsonSerialMessage(1024);
+      StaticJsonDocument<200> jsonSerialMessage;
       deserializeJson(jsonSerialMessage, Serial2.readString());
       const char* message = jsonSerialMessage["message"];
       
