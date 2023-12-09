@@ -25,7 +25,7 @@ RollingAverage* TemperatureRollingAverage;
 
 
 //============================ WIFI MANAGER ============================
-#define TRIGGER_PIN 0
+#define TRIGGER_PIN 5 //External Button
 #define AP_NAME "LifeLinkAP"
 #define AP_PASSWORD "password"
 
@@ -121,7 +121,7 @@ void setup() {
   EEPROM.begin(20 + (MAX_MOBILE_NUMBERS * MOBILE_NUMBER_LENGTH ));
   GSMToggleEPROM = 2 + (MAX_MOBILE_NUMBERS * MOBILE_NUMBER_LENGTH );
 
-  pinMode(TRIGGER_PIN, INPUT);
+  pinMode(TRIGGER_PIN, INPUT_PULLUP);
 
   IrSender.begin(SEND_PIN);
   IrSender.enableIROut(38); // Call it with 38 kHz to initialize the values printed below
