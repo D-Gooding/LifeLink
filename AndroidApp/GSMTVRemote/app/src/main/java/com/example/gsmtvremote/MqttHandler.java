@@ -12,7 +12,15 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class MqttHandler {
+
+    private ArrayList<String> ListenAlerts = new ArrayList<>(
+            Arrays.asList(
+                    "uok/iot/dmag2/LowRoomTemp"
+            ));
 
     private MqttClient client;
 
@@ -44,9 +52,10 @@ public class MqttHandler {
                 @Override
                 public void messageArrived(String topic, MqttMessage message) throws Exception {
                     Log.d("MQTT", "Message received on topic: " + topic + ", Message: " + new String(message.getPayload()));
-                    NotificationHelper notificationHelper = new NotificationHelper(context);
-                    notificationHelper.showNotification("LIFE LINK ALERT", new String(message.getPayload()));
-
+                    if(ListenAlerts.contains(topic)){
+                        NotificationHelper notificationHelper = new NotificationHelper(context);
+                        notificationHelper.showNotification("LIFE LINK ALERT", new String(message.getPayload()));
+                    }
 
                 }
 
@@ -75,6 +84,7 @@ public class MqttHandler {
     public void publish(String topic, String message) {
         try {
             MqttMessage mqttMessage = new MqttMessage(message.getBytes());
+            subscribe(topic);
             client.publish(topic, mqttMessage);
         } catch (MqttException e) {
             e.printStackTrace();
