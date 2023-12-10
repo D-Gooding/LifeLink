@@ -277,6 +277,25 @@ void decodeTVCommand(const char* message)
     }
 
   }
+  else if(strncmp(message, "VOL", 3) == 0)
+  {
+    blinkOnboardLED();
+    message = message + 4;
+    char* vlCode = "VOL+";
+    if (message[0] == '-'){
+      vlCode = "VOL-";
+      message = message + 1;
+    }
+    char* endptr;
+    long number = strtol(message, &endptr, 10);
+    if (endptr != message) {
+      for(int i = 0; i < number; i++)
+      {
+        send_ir_data(vlCode);
+      }
+    }
+
+  }
 }
 
 
@@ -289,20 +308,6 @@ void decodeMessage(const char* message)
     decodeTVCommand(message + 3);
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
