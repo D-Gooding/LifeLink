@@ -38,6 +38,9 @@ const std::map<byte, std::string> TV_IR_COMMANDS = {
     {0x21, "VOL-"}
 };
 
+bool digitBefore = false;
+unsigned long lastSampleTime = 0;  // Define the variable
+
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -68,7 +71,34 @@ void loop() {
 
         if (isIRCommandValid(receivedCommand)) {
             Serial.println("Valid IR command received!");
-            DisplayBuffer = TV_IR_COMMANDS.at(receivedCommand) + "   ";
+            std::string str = TV_IR_COMMANDS.at(receivedCommand);
+            if(std::isdigit(str[0]))
+            {
+              if((millis() - lastSampleTime) >= 1000)
+              {
+                DisplayBuffer = "";
+                digitBefore = true;
+              }
+
+              if((millis() - lastSampleTime) >= 300)
+              {
+                lastSampleTime = millis();
+                if(!digitBefore){  
+                  DisplayBuffer = "";
+                  digitBefore = true;
+                }
+                DisplayBuffer.erase(std::remove(DisplayBuffer.begin(), DisplayBuffer.end(), ' '), DisplayBuffer.end());
+
+                DisplayBuffer += str + "   ";
+              }
+
+            }
+            else
+            {
+              DisplayBuffer = TV_IR_COMMANDS.at(receivedCommand) + "   ";
+              digitBefore = false;
+            }
+
             // Do something when a valid command is received
         } else {
             Serial.println("Invalid IR command received!");
