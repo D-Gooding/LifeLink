@@ -97,7 +97,7 @@ void setup() {
 
   //done
   serialPrintString("Done");
-  sendSMS("+447927401195","GSM Online");
+  //sendSMS("+44***********","GSM Online");
   
 }
 
